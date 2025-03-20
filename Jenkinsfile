@@ -1,75 +1,62 @@
 pipeline {
     agent any
-
     environment {
-        IMAGE_NAME = "sujith-26/task2_docker"  
-        TAG = "latest"
-        CONTAINER_NAME = "my-container"
-        PORT = "3001"
+        DOCKER_IMAGE = 'sujith2606/demo:latest' // Correct image name used in build step
+        DOCKER_TAG = 'sujith2606/task2_docker:latest' // Proper tag for pushing to Docker Hub
     }
-
     stages {
         stage('Clone Repository') {
             steps {
-                echo "Cloning GitHub repository..."
-                git branch: 'main', url: 'https://github.com/sujith-26/task2_docker.git'
+                echo 'Cloning GitHub repository...'
+                git 'https://github.com/sujith-26/task2_docker.git'
             }
         }
-
         stage('Verify Files') {
             steps {
-                echo "Checking if required files exist..."
+                echo 'Checking if required files exist...'
                 sh 'ls -l'
-                sh '[ -f build.sh ] && echo "build.sh found" || { echo "Error: build.sh not found!"; exit 1; }'
-                sh '[ -f deploy.sh ] && echo "deploy.sh found" || { echo "Error: deploy.sh not found!"; exit 1; }'
+                sh '[ -f build.sh ] && echo "build.sh found" || exit 1'
+                sh '[ -f deploy.sh ] && echo "deploy.sh found" || exit 1'
             }
         }
-
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
-                sh 'sed -i -e "s/\r$//" build.sh'  // Convert to Unix format
-                sh 'chmod 755 build.sh'  // Ensure executable permissions
-                sh 'ls -l build.sh'  // Debugging: Check permissions
-                sh './build.sh'  // Run the script
+                echo 'Building Docker image...'
+                sh 'chmod +x build.sh && ./build.sh'
             }
         }
-
         stage('Login to Docker Hub') {
             steps {
-                echo "Logging into Docker Hub..."
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                echo 'Logging into Docker Hub...'
+                withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u sujith2606 --password-stdin'
                 }
             }
         }
-
         stage('Push Docker Image') {
             steps {
-                echo "Pushing Docker image to Docker Hub..."
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "docker tag $IMAGE_NAME:$TAG $DOCKER_USER/$IMAGE_NAME:$TAG"
-                    sh "docker push $DOCKER_USER/$IMAGE_NAME:$TAG"
+                echo 'Pushing Docker image to Docker Hub...'
+                withCredentials([string(credentialsId: 'docker-hub-password', variable: 'DOCKER_PASS')]) {
+                    sh """
+                        docker tag $DOCKER_IMAGE $DOCKER_TAG
+                        docker push $DOCKER_TAG
+                    """
                 }
             }
         }
-
         stage('Deploy Docker Container') {
             steps {
-                echo "Deploying Docker container..."
-                sh 'chmod 755 deploy.sh'  // Ensure deploy script is executable
-                sh 'ls -l deploy.sh'  // Debugging: Check permissions
-                sh './deploy.sh'  // Run the script
+                echo 'Deploying Docker container...'
+                sh './deploy.sh'
             }
         }
     }
-
     post {
-        success {
-            echo "✅ Deployment Successful!"
-        }
         failure {
-            echo "❌ Deployment Failed! Check logs for errors."
+            echo '❌ Deployment Failed! Check logs for errors.'
+        }
+        success {
+            echo '✅ Deployment Successful!'
         }
     }
 }
