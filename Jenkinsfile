@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "sujith2606/demo"  // Use a proper Docker Hub repository name
+        IMAGE_NAME = "sujith-26/task2_docker"  
         TAG = "latest"
         CONTAINER_NAME = "my-container"
         PORT = "3001"
@@ -28,8 +28,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image..."
-                sh 'chmod +x build.sh'
-                sh 'set -e; ./build.sh'  // Ensure script exits on failure
+                sh 'sed -i -e "s/\r$//" build.sh'  // Convert to Unix format
+                sh 'chmod 755 build.sh'  // Ensure executable permissions
+                sh 'ls -l build.sh'  // Debugging: Check permissions
+                sh './build.sh'  // Run the script
             }
         }
 
@@ -44,27 +46,30 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                echo "Tagging and pushing Docker image..."
-                sh "docker tag $IMAGE_NAME:$TAG $DOCKER_USER/$IMAGE_NAME:$TAG"
-                sh "docker push $DOCKER_USER/$IMAGE_NAME:$TAG"
+                echo "Pushing Docker image to Docker Hub..."
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "docker tag $IMAGE_NAME:$TAG $DOCKER_USER/$IMAGE_NAME:$TAG"
+                    sh "docker push $DOCKER_USER/$IMAGE_NAME:$TAG"
+                }
             }
         }
 
         stage('Deploy Docker Container') {
             steps {
                 echo "Deploying Docker container..."
-                sh 'chmod +x deploy.sh'
-                sh 'set -e; ./deploy.sh'  // Ensure script exits on failure
+                sh 'chmod 755 deploy.sh'  // Ensure deploy script is executable
+                sh 'ls -l deploy.sh'  // Debugging: Check permissions
+                sh './deploy.sh'  // Run the script
             }
         }
     }
 
     post {
         success {
-            echo "Deployment Successful!"
+            echo "✅ Deployment Successful!"
         }
         failure {
-            echo "Deployment Failed!"
+            echo "❌ Deployment Failed! Check logs for errors."
         }
     }
 }
