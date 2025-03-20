@@ -2,18 +2,26 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "sujith2606/demo"          // Replace with your Docker Hub username and image name
+        IMAGE_NAME = "sujith2606/demo"  // Use a proper Docker Hub repository name
         TAG = "latest"
         CONTAINER_NAME = "my-container"
         PORT = "3001"
     }
 
     stages {
-        
         stage('Clone Repository') {
             steps {
                 echo "Cloning GitHub repository..."
-                git 'https://github.com/sujith-26/task2_docker.git'  // Replace with your repo URL
+                git branch: 'main', url: 'https://github.com/sujith-26/task2_docker.git'
+            }
+        }
+
+        stage('Verify Files') {
+            steps {
+                echo "Checking if required files exist..."
+                sh 'ls -l'
+                sh '[ -f build.sh ] && echo "build.sh found" || { echo "Error: build.sh not found!"; exit 1; }'
+                sh '[ -f deploy.sh ] && echo "deploy.sh found" || { echo "Error: deploy.sh not found!"; exit 1; }'
             }
         }
 
@@ -21,24 +29,24 @@ pipeline {
             steps {
                 echo "Building Docker image..."
                 sh 'chmod +x build.sh'
-                sh './build.sh'
+                sh 'set -e; ./build.sh'  // Ensure script exits on failure
             }
         }
 
-                stage('Login to Docker Hub') {
+        stage('Login to Docker Hub') {
             steps {
                 echo "Logging into Docker Hub..."
                 withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                echo "Pushing Docker image to Docker Hub..."
-                sh "docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$TAG"
-                sh "docker push $IMAGE_NAME:$TAG"
+                echo "Tagging and pushing Docker image..."
+                sh "docker tag $IMAGE_NAME:$TAG $DOCKER_USER/$IMAGE_NAME:$TAG"
+                sh "docker push $DOCKER_USER/$IMAGE_NAME:$TAG"
             }
         }
 
@@ -46,7 +54,7 @@ pipeline {
             steps {
                 echo "Deploying Docker container..."
                 sh 'chmod +x deploy.sh'
-                sh './deploy.sh'
+                sh 'set -e; ./deploy.sh'  // Ensure script exits on failure
             }
         }
     }
