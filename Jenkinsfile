@@ -2,18 +2,18 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "sujith2606/demo"          // Replace with your Docker Hub username and image name
+        IMAGE_NAME = "sujith-26/task2_docker"          // Replace with your Docker Hub username and image name
         TAG = "latest"
         CONTAINER_NAME = "my-container"
         PORT = "3001"
     }
 
     stages {
-       
+        
         stage('Clone Repository') {
             steps {
                 echo "Cloning GitHub repository..."
-                git branch:'main',url:'https://github.com/sujith-26/task2_docker.git'  // Replace with your repo URL
+                git 'https://github.com/sujith-26/task2_docker.git'  // Replace with your repo URL
             }
         }
 
@@ -59,4 +59,4 @@ pipeline {
             echo "Deployment Failed!"
         }
     }
-} 
+}

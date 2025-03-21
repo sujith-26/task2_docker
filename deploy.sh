@@ -3,7 +3,7 @@
 # Set Docker image name, tag, and container name
 IMAGE_NAME="sujith2606/demo"
 TAG="latest"
-CONTAINER_NAME="my-container"
+CONTAINER_NAME="jenkins-docker-container"
 
 # Stop and remove any existing container with the same name
 docker stop $CONTAINER_NAME || true
